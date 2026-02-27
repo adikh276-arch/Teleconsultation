@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -1692,11 +1691,11 @@
                     <div class="assess-meta">
                         <div class="assess-meta-item">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v3l2 2" stroke="#6B7280" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="7" r="5" stroke="#6B7280" stroke-width="1.4"/></svg>
-                            2–3 min
+                            2–5 min
                         </div>
                         <div class="assess-meta-item">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.5" stroke="#6B7280" stroke-width="1.4"/><path d="M5 6h4M5 8.5h2" stroke="#6B7280" stroke-width="1.3" stroke-linecap="round"/></svg>
-                            8 questions
+                            12 questions
                         </div>
                     </div>
                     <button class="start-btn" style="background:#2563EB;color:#fff;" onclick="startQuiz('presymptom')">Start Assessment →</button>
@@ -1935,7 +1934,7 @@
                             <div class="nutr-badge" style="background:#EDE9FE;">
                                 <span>🌡️</span>
                                 <div class="nutr-title">Temperature</div>
-                                <div class="nutr-desc">Normal range is 36.1–37.2°C. Readings above 38°C indicate fever. Log the time alongside.</div>
+                                <div class="nutr-desc">Normal range is 97–99°F (36.1–37.2°C). A reading above 100.4°F is considered a fever. Log the time alongside.</div>
                             </div>
                         </div>
                         <div class="sc-tip" style="padding-top:14px;">
@@ -2188,34 +2187,467 @@
         }
 
         /* ═══════════════════════════════
-         ASSESSMENTS — quiz engine
+         ASSESSMENTS — branching quiz engine
         ═══════════════════════════════ */
+
+        // Per-symptom Q2 and Q3 branches — injected after Q1 is answered
+        const symptomBranches = {
+            0: { // Body pain or aches
+                q2: {
+                    question: 'Where is the pain located?',
+                    options: [
+                        {label:'Head, neck, or jaw'},
+                        {label:'Chest or upper back'},
+                        {label:'Stomach or abdomen'},
+                        {label:'Lower back or spine'},
+                        {label:'Shoulder, arm, or hand'},
+                        {label:'Hip, leg, knee, or foot'},
+                        {label:'All over / widespread'},
+                    ]
+                },
+                q3: {
+                    question: 'How would you describe the pain?',
+                    options: [
+                        {label:'Sharp or stabbing'},
+                        {label:'Dull and aching'},
+                        {label:'Throbbing or pulsing'},
+                        {label:'Burning or tingling'},
+                        {label:'Stiffness or pressure'},
+                        {label:'Comes and goes'},
+                    ]
+                }
+            },
+            1: { // Weakness or fatigue
+                q2: {
+                    question: 'When do you feel the weakness or fatigue most?',
+                    options: [
+                        {label:'Right after waking up'},
+                        {label:'After light activity or movement'},
+                        {label:'Throughout the whole day'},
+                        {label:'Mainly in the evenings'},
+                        {label:'After eating'},
+                        {label:'No pattern — comes and goes'},
+                    ]
+                },
+                q3: {
+                    question: 'Is there anything else alongside the fatigue?',
+                    options: [
+                        {label:'Muscle or joint aches'},
+                        {label:'Poor sleep or insomnia'},
+                        {label:'Shortness of breath'},
+                        {label:'Low mood or difficulty focusing'},
+                        {label:'Loss of appetite'},
+                        {label:'Nothing specific'},
+                    ]
+                }
+            },
+            2: { // Fever or chills
+                q2: {
+                    question: 'How high is your temperature?',
+                    options: [
+                        {label:'I haven\'t measured it'},
+                        {label:'Low — around 99–100°F'},
+                        {label:'Moderate — 100–102°F'},
+                        {label:'High — above 102°F'},
+                        {label:'Normal temp but I feel feverish'},
+                    ]
+                },
+                q3: {
+                    question: 'What else are you experiencing with the fever?',
+                    options: [
+                        {label:'Chills or shivering'},
+                        {label:'Body aches and headache'},
+                        {label:'Sore throat or runny nose'},
+                        {label:'Rash or skin changes'},
+                        {label:'Nausea or vomiting'},
+                        {label:'Just the fever — nothing else'},
+                    ]
+                }
+            },
+            3: { // Nausea / stomach
+                q2: {
+                    question: 'What best describes the stomach issue?',
+                    options: [
+                        {label:'Nausea or urge to vomit'},
+                        {label:'Vomiting'},
+                        {label:'Diarrhoea or loose stools'},
+                        {label:'Constipation or bloating'},
+                        {label:'Sharp or crampy stomach pain'},
+                        {label:'Loss of appetite'},
+                    ]
+                },
+                q3: {
+                    question: 'Does it seem related to eating?',
+                    options: [
+                        {label:'Worse right after eating'},
+                        {label:'Better after eating'},
+                        {label:'No connection to meals'},
+                        {label:'Triggered by certain foods'},
+                        {label:'Mostly in the morning'},
+                        {label:'Happens randomly'},
+                    ]
+                }
+            },
+            4: { // Cough / breathing
+                q2: {
+                    question: 'Which best describes your symptom?',
+                    options: [
+                        {label:'Dry cough'},
+                        {label:'Wet or productive cough'},
+                        {label:'Shortness of breath on exertion'},
+                        {label:'Shortness of breath at rest'},
+                        {label:'Wheezing or tight chest'},
+                        {label:'Runny nose and sore throat only'},
+                    ]
+                },
+                q3: {
+                    question: 'How is the breathing or cough trending?',
+                    options: [
+                        {label:'Started recently — about the same'},
+                        {label:'Started recently — getting worse'},
+                        {label:'Been a few weeks — stable'},
+                        {label:'Been a few weeks — getting worse'},
+                        {label:'On and off for months'},
+                    ]
+                }
+            },
+            5: { // Skin issue
+                q2: {
+                    question: 'Where is the skin issue?',
+                    options: [
+                        {label:'Face or scalp'},
+                        {label:'Neck or chest'},
+                        {label:'Arms or hands'},
+                        {label:'Legs or feet'},
+                        {label:'Back or torso'},
+                        {label:'Widespread / multiple areas'},
+                    ]
+                },
+                q3: {
+                    question: 'What does the skin issue look like?',
+                    options: [
+                        {label:'Redness or inflammation'},
+                        {label:'Rash or raised bumps'},
+                        {label:'Itching without a visible rash'},
+                        {label:'Dry, flaky, or peeling skin'},
+                        {label:'Blisters or sores'},
+                        {label:'Swelling or hives'},
+                    ]
+                }
+            },
+            6: { // Headache or dizziness
+                q2: {
+                    question: 'Is it mainly headache or dizziness?',
+                    options: [
+                        {label:'Mainly headache'},
+                        {label:'Mainly dizziness or vertigo'},
+                        {label:'Both headache and dizziness'},
+                        {label:'Headache with nausea'},
+                        {label:'Dizziness with nausea'},
+                        {label:'Blurred vision or light sensitivity'},
+                    ]
+                },
+                q3: {
+                    question: 'What pattern does it follow?',
+                    options: [
+                        {label:'Constant since it started'},
+                        {label:'Comes and goes through the day'},
+                        {label:'Worse in the morning'},
+                        {label:'Triggered by movement or position change'},
+                        {label:'Worse with screens or bright light'},
+                        {label:'Throbbing on one side of the head'},
+                    ]
+                }
+            },
+            7: { // Something else
+                q2: {
+                    question: 'Can you narrow it down a bit?',
+                    options: [
+                        {label:'Pain or discomfort in a specific area'},
+                        {label:'A lump, swelling, or growth'},
+                        {label:'Changes in urination or bowel habits'},
+                        {label:'Unusual bleeding or discharge'},
+                        {label:'Unexplained weight change'},
+                        {label:'I\'d prefer to describe it to the doctor'},
+                    ]
+                },
+                q3: {
+                    question: 'How much is this affecting your daily life?',
+                    options: [
+                        {label:'Barely noticeable'},
+                        {label:'Slightly uncomfortable but manageable'},
+                        {label:'Moderately disrupting my routine'},
+                        {label:'Significantly limiting what I can do'},
+                    ]
+                }
+            },
+        };
+
+        // Resolved sequence for presymptom quiz — built dynamically after Q1
+        let resolvedQuestions = []; // [{question, options}]
+
+        let currentQuiz = null;
+        let currentQuizId = null;
+        let currentQ = 0;
+        let answers = [];
+
+        function startQuiz(quizId) {
+            currentQuizId = quizId;
+            currentQuiz = quizData[quizId];
+            currentQ = 0;
+            resolvedQuestions = [];
+
+            if (quizId === 'presymptom') {
+                // Start with just Q1 — rest gets built after Q1 answer
+                resolvedQuestions = [{ question: currentQuiz.q1.question, options: currentQuiz.q1.options }];
+                answers = [];
+            } else {
+                answers = new Array(currentQuiz.questions.length).fill(null);
+            }
+
+            document.getElementById('quiz-title').textContent = currentQuiz.title;
+            document.getElementById('quiz-results-panel').style.display = 'none';
+            document.getElementById('quiz-q-panel').style.display = 'block';
+            document.getElementById('result-retry-btn').onclick = () => startQuiz(quizId);
+            renderQuestion();
+            goTo('s5');
+        }
+
+        function getOptions(qIndex) {
+            if (currentQuizId === 'presymptom') {
+                return resolvedQuestions[qIndex]?.options || [];
+            }
+            return currentQuiz.optionSets ? currentQuiz.optionSets[qIndex] : currentQuiz.options;
+        }
+
+        function getTotalQuestions() {
+            if (currentQuizId === 'presymptom') return resolvedQuestions.length;
+            return currentQuiz.questions.length;
+        }
+
+        function getQuestionText(qIndex) {
+            if (currentQuizId === 'presymptom') return resolvedQuestions[qIndex]?.question || '';
+            return currentQuiz.questions[qIndex];
+        }
+
+        function renderQuestion() {
+            const total = getTotalQuestions();
+            document.getElementById('quiz-step-label').textContent = `Question ${currentQ + 1} of ${total}`;
+            document.getElementById('quiz-question-text').textContent = getQuestionText(currentQ);
+            document.getElementById('quiz-question-sub').textContent = currentQuiz.instructions;
+            document.getElementById('quiz-progress-fill').style.width = ((currentQ / total) * 100) + '%';
+
+            const opts = document.getElementById('quiz-options');
+            opts.innerHTML = '';
+            getOptions(currentQ).forEach((opt, i) => {
+                const div = document.createElement('div');
+                div.className = 'quiz-opt' + (answers[currentQ] === i ? ' selected' : '');
+                div.innerHTML = `<div class="quiz-opt-radio"></div><span class="quiz-opt-text">${opt.label}</span>`;
+                div.onclick = () => selectOption(i);
+                opts.appendChild(div);
+            });
+
+            // Only show "See Results" on the actual last question
+            const isLast = currentQ === getTotalQuestions() - 1;
+            const nextBtn = document.getElementById('quiz-next-btn');
+            nextBtn.disabled = answers[currentQ] === null || answers[currentQ] === undefined;
+            nextBtn.textContent = isLast ? 'See Results' : 'Continue';
+            document.getElementById('quiz-prev-btn').style.display = currentQ === 0 ? 'none' : 'flex';
+        }
+
+        function selectOption(i) {
+            answers[currentQ] = i;
+
+            // After Q1 is answered in presymptom, inject the branch questions
+            if (currentQuizId === 'presymptom' && currentQ === 0) {
+                const branch = symptomBranches[i];
+                resolvedQuestions = [
+                    { question: currentQuiz.q1.question, options: currentQuiz.q1.options },
+                    branch.q2,
+                    branch.q3,
+                    ...currentQuiz.commonQuestions,
+                ];
+                // Reset answers array to match new total length
+                const prev = answers[0];
+                answers = new Array(resolvedQuestions.length).fill(null);
+                answers[0] = prev;
+            }
+
+            document.querySelectorAll('.quiz-opt').forEach((el, idx) => {
+                el.classList.toggle('selected', idx === i);
+            });
+            document.getElementById('quiz-next-btn').disabled = false;
+
+            // Update Continue/See Results label immediately after branch is resolved
+            const isLast = currentQ === getTotalQuestions() - 1;
+            document.getElementById('quiz-next-btn').textContent = isLast ? 'See Results' : 'Continue';
+        }
+
+        function quizNext() {
+            if (answers[currentQ] === null || answers[currentQ] === undefined) return;
+            if (currentQ < getTotalQuestions() - 1) {
+                currentQ++;
+                renderQuestion();
+                document.getElementById('s5').scrollTop = 0;
+            } else {
+                showResults();
+            }
+        }
+
+        function quizPrev() {
+            if (currentQ > 0) { currentQ--; renderQuestion(); }
+        }
+
+        function showResults() {
+            document.getElementById('quiz-progress-fill').style.width = '100%';
+
+            if (currentQuiz.isSummary) {
+                document.getElementById('result-arc').style.stroke = currentQuiz.color;
+                document.getElementById('result-arc').style.strokeDashoffset = 289 - 240;
+                document.getElementById('result-score-num').innerHTML = '✓';
+                document.getElementById('result-score-num').style.color = currentQuiz.color;
+                document.getElementById('result-score-max').textContent = '';
+                document.getElementById('result-title').textContent = currentQuiz.summaryTitle;
+                document.getElementById('result-title').style.color = currentQuiz.color;
+                document.getElementById('result-desc').textContent = currentQuiz.summaryDesc;
+
+                const bd = document.getElementById('result-breakdown');
+                bd.innerHTML = '<h3>Your Responses</h3>';
+                resolvedQuestions.forEach((item, i) => {
+                    const ans = answers[i];
+                    const label = (ans !== null && ans !== undefined) ? item.options[ans].label : '—';
+                    bd.innerHTML += `<div class="result-range-item">
+                        <div class="range-dot" style="background:${currentQuiz.color}"></div>
+                        <span class="range-label" style="font-size:12px;line-height:1.4;">
+                            <strong style="display:block;color:var(--text-primary);margin-bottom:1px;">${item.question}</strong>
+                            ${label}
+                        </span>
+                    </div>`;
+                });
+
+                document.querySelector('.result-cta').textContent = currentQuiz.ctaLabel;
+            } else {
+                let score = 0;
+                answers.forEach((ans, i) => {
+                    const val = getOptions(i)[ans].value;
+                    score += val;
+                });
+
+                const max = currentQuiz.maxScore;
+                const pct = Math.round((score / max) * 289);
+                const arc = document.getElementById('result-arc');
+                arc.style.stroke = currentQuiz.color;
+                arc.style.strokeDashoffset = 289 - pct;
+
+                document.getElementById('result-score-num').textContent = score;
+                document.getElementById('result-score-num').style.color = currentQuiz.color;
+                document.getElementById('result-score-max').textContent = '/' + max;
+
+                const range = currentQuiz.ranges.find(r => score >= r.min && score <= r.max);
+                document.getElementById('result-title').textContent = range ? range.label : '—';
+                document.getElementById('result-title').style.color = range ? range.color : '#111';
+                document.getElementById('result-desc').textContent =
+                    (currentQuiz.rangeDesc && range) ? currentQuiz.rangeDesc[range.label] : '';
+
+                const bd = document.getElementById('result-breakdown');
+                bd.innerHTML = '<h3>Risk Levels</h3>';
+                currentQuiz.ranges.forEach(r => {
+                    const isActive = range && r.label === range.label;
+                    bd.innerHTML += `<div class="result-range-item">
+                        <div class="range-dot" style="background:${r.color}"></div>
+                        <span class="range-label ${isActive ? 'range-active' : ''}">${r.label}</span>
+                        <span class="range-score">${r.range}</span>
+                    </div>`;
+                });
+
+                document.querySelector('.result-cta').textContent = 'Talk to a Doctor';
+            }
+
+            document.getElementById('quiz-q-panel').style.display = 'none';
+            document.getElementById('quiz-results-panel').style.display = 'flex';
+            document.getElementById('s5').scrollTop = 0;
+        }
         const quizData = {
             presymptom: {
                 title: 'Pre-Consultation Screener',
-                maxScore: null, // not a scored quiz — outputs summary
+                maxScore: null,
                 color: '#2563EB',
                 accentBg: '#DBEAFE',
                 instructions: 'Please answer honestly — this helps your doctor prepare for the session.',
-                questions: [
-                    'How long have you been experiencing your main symptom?',
-                    'How would you describe the severity of your symptom today?',
-                    'Have you had this symptom or a similar one before?',
-                    'Are you currently taking any prescription medicines?',
-                    'Do you have any known allergies (medicines, food, or substances)?',
-                    'Have you recently had a fever (38°C or above)?',
-                    'Are you experiencing shortness of breath or chest discomfort?',
-                    'Have you had any recent injuries, surgeries, or hospital admissions?',
-                ],
-                optionSets: [
-                    [ {label:'Less than 24 hours',value:1},{label:'1–3 days',value:2},{label:'4–7 days',value:3},{label:'More than a week',value:4} ],
-                    [ {label:'Mild — noticeable but manageable',value:1},{label:'Moderate — affecting daily activity',value:2},{label:'Severe — difficult to function',value:3},{label:'Very severe — need immediate help',value:4} ],
-                    [ {label:'No, this is new',value:0},{label:'Yes, occasionally',value:1},{label:'Yes, frequently',value:2},{label:'Ongoing / chronic condition',value:3} ],
-                    [ {label:'No',value:0},{label:'Yes — 1 medicine',value:1},{label:'Yes — 2 or more medicines',value:2},{label:'Yes — but not sure of names',value:3} ],
-                    [ {label:'None known',value:0},{label:'Yes — medicine allergy',value:1},{label:'Yes — food allergy',value:2},{label:'Yes — multiple allergies',value:3} ],
-                    [ {label:'No fever',value:0},{label:'Mild — 37.5–38°C',value:1},{label:'Moderate — 38–39°C',value:2},{label:'High — above 39°C',value:3} ],
-                    [ {label:'No, none',value:0},{label:'Mild breathlessness only',value:1},{label:'Chest discomfort present',value:2},{label:'Both present — or worsening',value:3} ],
-                    [ {label:'None in the past 3 months',value:0},{label:'Minor injury or procedure',value:1},{label:'Surgery in past 3 months',value:2},{label:'Hospital admission in past month',value:3} ],
+                // Q1 is fixed. Q2 & Q3 get injected from symptomBranches after Q1 is answered.
+                // Q4–Q9 are the shared common questions that follow for everyone.
+                q1: {
+                    question: 'What is your primary symptom or concern right now?',
+                    options: [
+                        {label:'Body pain or aches',value:0},
+                        {label:'Weakness or fatigue',value:1},
+                        {label:'Fever or chills',value:2},
+                        {label:'Nausea, vomiting, or stomach issues',value:3},
+                        {label:'Cough, cold, or breathing difficulty',value:4},
+                        {label:'Skin issue or rash',value:5},
+                        {label:'Headache or dizziness',value:6},
+                        {label:'Something else',value:7},
+                    ]
+                },
+                commonQuestions: [
+                    {
+                        question: 'How long have you been experiencing this?',
+                        options: [
+                            {label:'Just started — under 24 hours'},
+                            {label:'1–3 days'},
+                            {label:'4–7 days'},
+                            {label:'1–4 weeks'},
+                            {label:'More than a month'},
+                            {label:'On and off for a long time'},
+                        ]
+                    },
+                    {
+                        question: 'How severe is it affecting you right now?',
+                        options: [
+                            {label:'Mild — I can manage my day normally'},
+                            {label:'Moderate — slowing me down noticeably'},
+                            {label:'Severe — hard to function properly'},
+                            {label:'Very severe — need urgent help'},
+                        ]
+                    },
+                    {
+                        question: 'Have you experienced this or something similar before?',
+                        options: [
+                            {label:'No — this is completely new'},
+                            {label:'Yes — happened once before'},
+                            {label:'Yes — happens occasionally'},
+                            {label:'Yes — it\'s a recurring or chronic issue'},
+                        ]
+                    },
+                    {
+                        question: 'Have you had a fever recently? If so, how high?',
+                        options: [
+                            {label:'No fever'},
+                            {label:'Low — around 99–100°F'},
+                            {label:'Moderate — 100–102°F'},
+                            {label:'High — above 102°F'},
+                            {label:'I haven\'t checked my temperature'},
+                        ]
+                    },
+                    {
+                        question: 'Are you currently taking any medicines or supplements?',
+                        options: [
+                            {label:'No medicines'},
+                            {label:'Yes — 1 prescription medicine'},
+                            {label:'Yes — 2 or more medicines'},
+                            {label:'Only supplements or vitamins'},
+                            {label:'Yes — but I don\'t know the names'},
+                        ]
+                    },
+                    {
+                        question: 'Any recent injuries, surgeries, or hospital visits in the past 3 months?',
+                        options: [
+                            {label:'None'},
+                            {label:'Minor injury — bruise, sprain, or cut'},
+                            {label:'Surgery or medical procedure'},
+                            {label:'Hospital admission'},
+                        ]
+                    },
                 ],
                 isSummary: true,
                 summaryTitle: 'Your Summary is Ready',
@@ -2292,148 +2724,6 @@
             },
         };
 
-        let currentQuiz = null;
-        let currentQuizId = null;
-        let currentQ = 0;
-        let answers = [];
-
-        function startQuiz(quizId) {
-            currentQuizId = quizId;
-            currentQuiz = quizData[quizId];
-            currentQ = 0;
-            answers = new Array(currentQuiz.questions.length).fill(null);
-            document.getElementById('quiz-title').textContent = currentQuiz.title;
-            document.getElementById('quiz-results-panel').style.display = 'none';
-            document.getElementById('quiz-q-panel').style.display = 'block';
-            document.getElementById('result-retry-btn').onclick = () => startQuiz(quizId);
-            renderQuestion();
-            goTo('s5');
-        }
-
-        function getOptions(qIndex) {
-            // Per-question option sets (all our quizzes use optionSets)
-            return currentQuiz.optionSets ? currentQuiz.optionSets[qIndex] : currentQuiz.options;
-        }
-
-        function renderQuestion() {
-            const q = currentQuiz.questions[currentQ];
-            const total = currentQuiz.questions.length;
-            document.getElementById('quiz-step-label').textContent = `Question ${currentQ + 1} of ${total}`;
-            document.getElementById('quiz-question-text').textContent = q;
-            document.getElementById('quiz-question-sub').textContent = currentQuiz.instructions;
-            document.getElementById('quiz-progress-fill').style.width = ((currentQ / total) * 100) + '%';
-
-            const opts = document.getElementById('quiz-options');
-            opts.innerHTML = '';
-            getOptions(currentQ).forEach((opt, i) => {
-                const div = document.createElement('div');
-                div.className = 'quiz-opt' + (answers[currentQ] === i ? ' selected' : '');
-                div.innerHTML = `<div class="quiz-opt-radio"></div><span class="quiz-opt-text">${opt.label}</span>`;
-                div.onclick = () => selectOption(i);
-                opts.appendChild(div);
-            });
-
-            const nextBtn = document.getElementById('quiz-next-btn');
-            nextBtn.disabled = answers[currentQ] === null;
-            nextBtn.textContent = currentQ === total - 1 ? 'See Results' : 'Continue';
-            document.getElementById('quiz-prev-btn').style.display = currentQ === 0 ? 'none' : 'flex';
-        }
-
-        function selectOption(i) {
-            answers[currentQ] = i;
-            document.querySelectorAll('.quiz-opt').forEach((el, idx) => {
-                el.classList.toggle('selected', idx === i);
-            });
-            document.getElementById('quiz-next-btn').disabled = false;
-        }
-
-        function quizNext() {
-            if (answers[currentQ] === null) return;
-            if (currentQ < currentQuiz.questions.length - 1) {
-                currentQ++;
-                renderQuestion();
-                document.getElementById('s5').scrollTop = 0;
-            } else {
-                showResults();
-            }
-        }
-
-        function quizPrev() {
-            if (currentQ > 0) { currentQ--; renderQuestion(); }
-        }
-
-        function showResults() {
-            document.getElementById('quiz-progress-fill').style.width = '100%';
-
-            if (currentQuiz.isSummary) {
-                // Summary mode — no score, just a summary card
-                document.getElementById('result-arc').style.stroke = currentQuiz.color;
-                document.getElementById('result-arc').style.strokeDashoffset = 289 - 240;
-                document.getElementById('result-score-num').innerHTML = '✓';
-                document.getElementById('result-score-num').style.color = currentQuiz.color;
-                document.getElementById('result-score-max').textContent = '';
-                document.getElementById('result-title').textContent = currentQuiz.summaryTitle;
-                document.getElementById('result-title').style.color = currentQuiz.color;
-                document.getElementById('result-desc').textContent = currentQuiz.summaryDesc;
-
-                // Show answer breakdown
-                const bd = document.getElementById('result-breakdown');
-                bd.innerHTML = '<h3>Your Responses</h3>';
-                currentQuiz.questions.forEach((q, i) => {
-                    const ans = answers[i];
-                    const label = ans !== null ? getOptions(i)[ans].label : '—';
-                    bd.innerHTML += `<div class="result-range-item">
-                        <div class="range-dot" style="background:${currentQuiz.color}"></div>
-                        <span class="range-label" style="font-size:12px;line-height:1.4;">
-                            <strong style="display:block;color:var(--text-primary);margin-bottom:1px;">${q}</strong>
-                            ${label}
-                        </span>
-                    </div>`;
-                });
-
-                document.querySelector('.result-cta').textContent = currentQuiz.ctaLabel;
-            } else {
-                // Scored mode
-                let score = 0;
-                answers.forEach((ans, i) => {
-                    const val = getOptions(i)[ans].value;
-                    score += val;
-                });
-
-                const max = currentQuiz.maxScore;
-                const pct = Math.round((score / max) * 289);
-                const arc = document.getElementById('result-arc');
-                arc.style.stroke = currentQuiz.color;
-                arc.style.strokeDashoffset = 289 - pct;
-
-                document.getElementById('result-score-num').textContent = score;
-                document.getElementById('result-score-num').style.color = currentQuiz.color;
-                document.getElementById('result-score-max').textContent = '/' + max;
-
-                const range = currentQuiz.ranges.find(r => score >= r.min && score <= r.max);
-                document.getElementById('result-title').textContent = range ? range.label : '—';
-                document.getElementById('result-title').style.color = range ? range.color : '#111';
-                document.getElementById('result-desc').textContent =
-                    (currentQuiz.rangeDesc && range) ? currentQuiz.rangeDesc[range.label] : '';
-
-                const bd = document.getElementById('result-breakdown');
-                bd.innerHTML = '<h3>Risk Levels</h3>';
-                currentQuiz.ranges.forEach(r => {
-                    const isActive = range && r.label === range.label;
-                    bd.innerHTML += `<div class="result-range-item">
-                        <div class="range-dot" style="background:${r.color}"></div>
-                        <span class="range-label ${isActive ? 'range-active' : ''}">${r.label}</span>
-                        <span class="range-score">${r.range}</span>
-                    </div>`;
-                });
-
-                document.querySelector('.result-cta').textContent = 'Talk to a Doctor';
-            }
-
-            document.getElementById('quiz-q-panel').style.display = 'none';
-            document.getElementById('quiz-results-panel').style.display = 'flex';
-            document.getElementById('s5').scrollTop = 0;
-        }
     </script>
 </body>
 
